@@ -5,7 +5,7 @@ from deep_translator import GoogleTranslator
 
 
 def translate(texte: str) : 
-    res = GoogleTranslator('en','fr').translate(text = texte)
+    res = GoogleTranslator('en','ar').translate(text = texte)
 
     return res
 
