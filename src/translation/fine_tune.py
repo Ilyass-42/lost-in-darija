@@ -1,5 +1,5 @@
 import pandas as pd
-from transformers import MarianTokenizer, MarianMTModel
+from transformers import MarianTokenizer, MarianMTModel, DataCollatorForSeq2Seq
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
@@ -33,7 +33,8 @@ class DarijaDataset(Dataset):
 train_path = "./data/Train.csv"
 Darija_Dataset = DarijaDataset(train_path,tokenizer) 
 
-dataloader = DataLoader(Darija_Dataset,batch_size=16,shuffle=True)
+collator = DataCollatorForSeq2Seq(tokenizer, model=model)
+dataloader = DataLoader(Darija_Dataset, batch_size=16, shuffle=True, collate_fn=collator)
 
 lr = 2e-5
 optimizer = AdamW(model.parameters(),lr=lr)
