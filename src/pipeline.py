@@ -4,7 +4,6 @@ from stt.transcribe import transcribe
 from translation.translate import translate
 from tts.synthetise import synthetise
 import sys
-import whisper
 
 if __name__=="__main__":
     
@@ -12,7 +11,6 @@ if __name__=="__main__":
         print("There is one argument missing !!")
         sys.exit(0)
 
-    model = whisper.load_model("tiny.en")
 
     param = sys.argv[1]
     print("Étape : Transcription")

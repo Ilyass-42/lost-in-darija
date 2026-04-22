@@ -7,7 +7,7 @@ from gtts import gTTS
 def synthetise(texte: str):
     path ="data/results/" 
     tts = gTTS(texte,lang = "ar")
-    index = 1
+    index = 3
     tts.save(f"{path}audio{index}.mp3")
 
 
