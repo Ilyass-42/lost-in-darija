@@ -1,18 +1,18 @@
 """ Module : synthetise.py : sert synthetiser une voix pour un texte"""
 
-from gtts import gTTS
+import asyncio
+import edge_tts
+VOICE ="ar-MA-JamalNeural"
 
-
-
-def synthetise(texte: str):
-    path ="data/results/" 
-    tts = gTTS(texte,lang = "ar")
-    index = 3
-    tts.save(f"{path}audio{index}.mp3")
+def synthetise(texte,output_path):
+    async def amain() -> None:
+        """ Main Function"""
+        communicate = edge_tts.Communicate(texte,VOICE)
+        await communicate.save(output_path)
+    asyncio.run(amain())
 
 
 if __name__ == "__main__":
-
-    texte = "مرحباً، أريد أن أطلب شطيرة"
-    synthetise(texte)
+    synthetise("مرحباً، أريد أن أطلب شطيرة","data/results/sandwich_order2.mp3")
+    
     
