@@ -75,7 +75,7 @@ The base model [`Helsinki-NLP/opus-mt-en-ar`](https://huggingface.co/Helsinki-NL
 | Hardware | Google Colab T4 GPU |
 | BLEU score (test) | 17.27 |
 
-The fine-tuned model is available on the HuggingFace Hub: **[Ilyass-42/opus-mt-en-ary-darija](https://huggingface.co/Ilyass-42/opus-mt-en-ary-darija)** *(link to be updated after upload)*
+The fine-tuned model is available on the HuggingFace Hub: **[Ilyass-42/opus-mt-en-ary-darija](https://huggingface.co/Ilyass-42/opus-mt-en-ary-darija)**
 
 ---
 
@@ -104,7 +104,6 @@ from transformers import MarianMTModel, MarianTokenizer
 tokenizer = MarianTokenizer.from_pretrained("Ilyass-42/opus-mt-en-ary-darija")
 model = MarianMTModel.from_pretrained("Ilyass-42/opus-mt-en-ary-darija")
 ```
-*(model name to be confirmed after upload)*
 
 **Option B — Fine-tune yourself:**
 ```bash
