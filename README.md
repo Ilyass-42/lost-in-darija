@@ -14,7 +14,7 @@ A speech-to-speech translation pipeline that converts spoken English into Morocc
 ---
 
 ## 🗂️ Project Structure
-'''
+```
 lost-in-darija/
 ├── data/
 │   ├── Train.csv          # Training set (eng → darija_ar)
@@ -36,7 +36,7 @@ lost-in-darija/
 ├── tests/
 │   └── test_pipeline.py
 └── requirements.txt
-'''
+```
 ---
 
 ## 🛠️ Tech Stack
