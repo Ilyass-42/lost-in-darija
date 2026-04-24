@@ -1,12 +1,11 @@
-""" Module : pipeline.py : module qui regroupe les 3 modules """
-print("pipeline.py démarre")
+""" Module : pipeline.py """
 from stt.transcribe import transcribe
 from translation.translate import translate
 from tts.synthetise import synthetise
 import sys
 import os
-
 if __name__=="__main__":
+    print("pipeline.py démarre")
     
     if len(sys.argv)<2:
         print("There is one argument missing !!")

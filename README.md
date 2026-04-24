@@ -73,7 +73,7 @@ The base model [`Helsinki-NLP/opus-mt-en-ar`](https://huggingface.co/Helsinki-NL
 | Learning rate | 2e-5 |
 | Optimizer | AdamW |
 | Hardware | Google Colab T4 GPU |
-| BLEU score (test) | 17.27 |
+| BLEU Score | 17.27 (evaluated on full test set, Colab notebook) |
 
 The fine-tuned model is available on the HuggingFace Hub: **[Ilyass-42/opus-mt-en-ary-darija](https://huggingface.co/Ilyass-42/opus-mt-en-ary-darija)**
 
@@ -93,6 +93,10 @@ cd lost-in-darija
 ```bash
 pip install -r requirements.txt
 ```
+
+> **Note:** `torch` must be installed separately depending on your hardware.  
+> GPU (CUDA 12.1): `pip install torch --index-url https://download.pytorch.org/whl/cu121`  
+> CPU only: `pip install torch`
 
 ### 3. Download or train the model
 
@@ -139,7 +143,7 @@ The translated Darija audio will be saved to `data/results/`.
 
 - TTS output has a slight MSA (Modern Standard Arabic) accent rather than a pure Darija accent
 - BLEU score is modest — Darija is a low-resource language with limited parallel data
-
+- BLEU evaluation was performed on the full test set in a Colab notebook — `evaluate.py` is provided for local reproducibility but was not used to produce the reported score.
 ---
 
 ## 📌 Roadmap
@@ -152,6 +156,7 @@ The translated Darija audio will be saved to `data/results/`.
 - [ ] Validation loss tracking during training
 - [ ] Improve BLEU score with larger dataset or `transformer-big` variant
 - [ ] Native Darija TTS voice
+- [ ] Unit tests (`tests/test_pipeline.py`)
 
 ---
 
