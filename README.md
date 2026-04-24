@@ -44,10 +44,38 @@ lost-in-darija/
 | Component | Technology |
 |-----------|------------|
 | Speech-to-Text | OpenAI Whisper (tiny.en) |
-| Translation | MarianMT fine-tuned on Darija dataset |
+| Translation | MarianMT fine-tuned on DODa |
 | Text-to-Speech | Microsoft Edge TTS (ar-MA-JamalNeural) |
 | Training | PyTorch + HuggingFace Transformers |
 | Evaluation | SacreBLEU |
+
+---
+
+## 📚 Dataset
+
+The translation model was fine-tuned on **[DODa — Darija Open Dataset](https://github.com/darija-open-dataset/dataset)**, the largest open-source English ↔ Darija parallel corpus, containing ~86,000 translated sentences. DODa covers both Arabic-script and Latin-script Darija, and accounts for the dialect's characteristic code-switching between Arabic, French, and Spanish.
+
+Only the `sentences.csv` file was used, filtered to the `eng` → `darija_ar` (Arabic script) column pair, yielding ~48,800 clean pairs split 81/9/10 into train/val/test sets.
+
+> Outchakoucht, A. & Es-Samaali, H. (2024). *The Evolution of Darija Open Dataset: Introducing Version 2*. arXiv:2405.13016.
+
+---
+
+## 🧪 Fine-tuning
+
+The base model [`Helsinki-NLP/opus-mt-en-ar`](https://huggingface.co/Helsinki-NLP/opus-mt-en-ar) was fine-tuned on the DODa corpus to adapt from Modern Standard Arabic (MSA) to Moroccan Darija. Source sentences were prepended with the `>>ary<<` language token (ISO 639-3 code for Moroccan Arabic) to direct the model's output toward Darija rather than MSA.
+
+| Parameter | Value |
+|-----------|-------|
+| Base model | Helsinki-NLP/opus-mt-en-ar |
+| Training pairs | ~39,000 |
+| Epochs | 4 |
+| Learning rate | 2e-5 |
+| Optimizer | AdamW |
+| Hardware | Google Colab T4 GPU |
+| BLEU score (test) | 17.27 |
+
+The fine-tuned model is available on the HuggingFace Hub: **[Ilyass-42/opus-mt-en-ary-darija](https://huggingface.co/Ilyass-42/opus-mt-en-ary-darija)** *(link to be updated after upload)*
 
 ---
 
@@ -70,12 +98,20 @@ pip install -r requirements.txt
 
 The fine-tuned model is not included in the repo (too large). You can either:
 
-**Option A — Fine-tune yourself:**
+**Option A — Download from HuggingFace Hub** *(recommended)*:
+```python
+from transformers import MarianMTModel, MarianTokenizer
+tokenizer = MarianTokenizer.from_pretrained("Ilyass-42/opus-mt-en-ary-darija")
+model = MarianMTModel.from_pretrained("Ilyass-42/opus-mt-en-ary-darija")
+```
+*(model name to be confirmed after upload)*
+
+**Option B — Fine-tune yourself:**
 ```bash
 python src/translation/fine_tune.py
 ```
 
-**Option B — Use the base model** (without fine-tuning):
+**Option C — Use the base model** (no Darija adaptation):
 Change `model_path` in `src/translation/translate.py` to `"Helsinki-NLP/opus-mt-en-ar"`.
 
 ### 4. Run the pipeline
@@ -96,6 +132,7 @@ The translated Darija audio will be saved to `data/results/`.
 | Training epochs | 4 |
 | Base model | Helsinki-NLP/opus-mt-en-ar |
 | TTS Voice | ar-MA-JamalNeural (Moroccan Arabic) |
+| Training hardware | Google Colab T4 GPU |
 
 ---
 
@@ -109,11 +146,12 @@ The translated Darija audio will be saved to `data/results/`.
 ## 📌 Roadmap
 
 - [x] Whisper STT integration
-- [x] MarianMT fine-tuning on Darija dataset
+- [x] MarianMT fine-tuning on DODa
 - [x] Edge TTS synthesis
 - [x] BLEU evaluation
 - [ ] Gradio UI for live demo
-- [ ] Improve BLEU score with larger dataset
+- [ ] Validation loss tracking during training
+- [ ] Improve BLEU score with larger dataset or `transformer-big` variant
 - [ ] Native Darija TTS voice
 
 ---
