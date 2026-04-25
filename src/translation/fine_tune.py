@@ -33,25 +33,49 @@ class DarijaDataset(Dataset):
 train_path = "./data/Train.csv"
 Darija_Dataset = DarijaDataset(train_path,tokenizer) 
 
+val_path = "./data/Val.csv"
+Darija_Dataset_Validation = DarijaDataset(val_path,tokenizer)
+
 collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 dataloader = DataLoader(Darija_Dataset, batch_size=16, shuffle=True, collate_fn=collator)
+dataloader_validation = DataLoader(Darija_Dataset_Validation, batch_size=16, collate_fn=collator)
+
 
 lr = 2e-5
 optimizer = AdamW(model.parameters(),lr=lr)
-num_epoch = 4
+num_epoch = 8
+best_val_loss = 1000000000000
 
 model.train()
 for epoch in range(num_epoch):
+    sum_train_loss = 0
+    num_batch_train = 0
     for batch in dataloader:
+        num_batch_train +=1
         optimizer.zero_grad()
         output = model(input_ids = batch["input_ids"].to(device) ,
                     attention_mask = batch["attention_mask"].to(device), 
                     labels = batch["labels"].to(device))
         loss = output.loss
+        sum_train_loss += loss.item()
         loss.backward()
         optimizer.step()
-    print(f"Epoch : {epoch} - Loss {loss.item()}")
+    print(f"Epoch : {epoch} - Train Loss {sum_train_loss/num_batch_train}")
+    model.eval()
+    sum_val_loss = 0
+    num_batch_val = 0
+    for batch in dataloader_validation:
+        num_batch_val +=1
+        with torch.no_grad():
+            val_output = model(input_ids = batch["input_ids"].to(device) ,
+                        attention_mask = batch["attention_mask"].to(device), 
+                        labels = batch["labels"].to(device))
+            val_loss = val_output.loss.item()
+            sum_val_loss += val_loss
+    model.train()
 
-
-model.save_pretrained("./models/fine_tuned_marian")
-tokenizer.save_pretrained("./models/fine_tuned_marian")
+    print(f"Epoch : {epoch} - Validation Loss {sum_val_loss/num_batch_val}")
+    if sum_val_loss/num_batch_val <= best_val_loss:
+        best_val_loss = sum_val_loss/num_batch_val
+        model.save_pretrained("./models/fine_tuned_marian")
+        tokenizer.save_pretrained("./models/fine_tuned_marian")
