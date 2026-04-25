@@ -1,6 +1,6 @@
 # 🗣️ Lost in Darija
 
-A speech-to-speech translation pipeline that converts spoken English into Moroccan Darija (الدارجة), designed for tourists navigating Morocco.
+A speech-to-speech translation pipeline that converts spoken English into Moroccan Darija, designed for tourists navigating Morocco.
 
 ---
 
@@ -53,7 +53,7 @@ lost-in-darija/
 
 ## 📚 Dataset
 
-The translation model was fine-tuned on **[DODa — Darija Open Dataset](https://github.com/darija-open-dataset/dataset)**, the largest open-source English ↔ Darija parallel corpus, containing ~86,000 translated sentences. DODa covers both Arabic-script and Latin-script Darija, and accounts for the dialect's characteristic code-switching between Arabic, French, and Spanish.
+The translation model was fine-tuned on **[DODa — Darija Open Dataset](https://github.com/darija-open-dataset/dataset)**, the largest open-source English ↔ Darija parallel corpus, containing ~86,000 translated sentences. DODa covers both Arabic-script and Latin-script Darija.
 
 Only the `sentences.csv` file was used, filtered to the `eng` → `darija_ar` (Arabic script) column pair, yielding ~48,800 clean pairs split 81/9/10 into train/val/test sets.
 
