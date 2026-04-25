@@ -6,15 +6,19 @@ from transformers import MarianTokenizer, MarianMTModel
 
 model_path = Path(__file__).parent.parent.parent/"models"/"fine_tuned_marian_v2"
 
-tokenizer = MarianTokenizer.from_pretrained(model_path)
-model = MarianMTModel.from_pretrained(model_path)
+_model = None
+_tokenizer = None
 
 
-def translate(texte: str) :  
+def translate(texte: str) :
+    global _model, _tokenizer
+    if _model is None:
+        _tokenizer = MarianTokenizer.from_pretrained(model_path)
+        _model = MarianMTModel.from_pretrained(model_path)
     texte = ">>ary<< " + texte
-    inputs = tokenizer(texte, return_tensors="pt")
-    translated = model.generate(**inputs)
-    res = tokenizer.decode(translated[0], skip_special_tokens=True)
+    inputs = _tokenizer(texte, return_tensors="pt")
+    translated = _model.generate(**inputs)
+    res = _tokenizer.decode(translated[0], skip_special_tokens=True)
 
     return res
 

@@ -3,11 +3,14 @@
 import whisper
 import sys
 
-model = whisper.load_model("tiny.en")
+_model = None
 
+def transcribe(path : str) :
+    global _model
+    if _model is None:
+        _model = whisper.load_model("tiny.en")
 
-def transcribe(path : str) : 
-    result = model.transcribe(path)
+    result = _model.transcribe(path)
 
     return result["text"]
 
