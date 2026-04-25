@@ -4,7 +4,7 @@ from pathlib import Path
 from transformers import MarianTokenizer, MarianMTModel
 
 
-model_path = Path(__file__).parent.parent.parent/"models"/"fine_tuned_marian"
+model_path = Path(__file__).parent.parent.parent/"models"/"fine_tuned_marian_v2"
 
 tokenizer = MarianTokenizer.from_pretrained(model_path)
 model = MarianMTModel.from_pretrained(model_path)
