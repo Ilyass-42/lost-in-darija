@@ -9,7 +9,7 @@ A speech-to-speech translation pipeline that converts spoken English into Morocc
 - 🎙️ **Speech-to-Text** — transcribes English audio using OpenAI Whisper
 - 🌍 **Neural Machine Translation** — translates English to Moroccan Darija using a fine-tuned MarianMT model (Helsinki-NLP/opus-mt-en-ar)
 - 🔊 **Text-to-Speech** — synthesizes Darija audio using Microsoft Edge TTS (ar-MA-JamalNeural voice)
-- 📊 **BLEU score evaluation** — measures translation quality on a test set (BLEU = 17.27 after 4 epochs)
+- 📊 **BLEU score evaluation** — measures translation quality on a test set (BLEU = 18.30 after 8 epochs)
 
 ---
 
@@ -69,13 +69,13 @@ The base model [`Helsinki-NLP/opus-mt-en-ar`](https://huggingface.co/Helsinki-NL
 |-----------|-------|
 | Base model | Helsinki-NLP/opus-mt-en-ar |
 | Training pairs | ~39,000 |
-| Epochs | 4 |
+| Epochs | 8 (best checkpoint: epoch 7) |
 | Learning rate | 2e-5 |
 | Optimizer | AdamW |
 | Hardware | Google Colab T4 GPU |
-| BLEU Score | 17.27 (evaluated on full test set, Colab notebook) |
+| BLEU Score | 18.30 (max_ngram_order=3, evaluated with evaluate.py) |
 
-The fine-tuned model is available on the HuggingFace Hub: **[Ilyass-42/opus-mt-en-ary-darija](https://huggingface.co/Ilyass-42/opus-mt-en-ary-darija)**
+The fine-tuned model is available on the HuggingFace Hub: **[ILyass-42/lost-in-darija-marian](https://huggingface.co/ILyass-42/lost-in-darija-marian)**
 
 ---
 
@@ -105,8 +105,8 @@ The fine-tuned model is not included in the repo (too large). You can either:
 **Option A — Download from HuggingFace Hub** *(recommended)*:
 ```python
 from transformers import MarianMTModel, MarianTokenizer
-tokenizer = MarianTokenizer.from_pretrained("Ilyass-42/opus-mt-en-ary-darija")
-model = MarianMTModel.from_pretrained("Ilyass-42/opus-mt-en-ary-darija")
+tokenizer = MarianTokenizer.from_pretrained("ILyass-42/lost-in-darija-marian")
+model = MarianMTModel.from_pretrained("ILyass-42/lost-in-darija-marian")
 ```
 
 **Option B — Fine-tune yourself:**
@@ -131,8 +131,8 @@ The translated Darija audio will be saved to `data/results/`.
 
 | Metric | Value |
 |--------|-------|
-| BLEU Score | 17.27 |
-| Training epochs | 4 |
+| BLEU Score | 18.30 |
+| Training epochs | 8 (best checkpoint: epoch 7) |
 | Base model | Helsinki-NLP/opus-mt-en-ar |
 | TTS Voice | ar-MA-JamalNeural (Moroccan Arabic) |
 | Training hardware | Google Colab T4 GPU |
@@ -143,7 +143,8 @@ The translated Darija audio will be saved to `data/results/`.
 
 - TTS output has a slight MSA (Modern Standard Arabic) accent rather than a pure Darija accent
 - BLEU score is modest — Darija is a low-resource language with limited parallel data
-- BLEU evaluation was performed on the full test set in a Colab notebook — `evaluate.py` is provided for local reproducibility but was not used to produce the reported score.
+- BLEU score uses `max_ngram_order=3` rather than the standard 4 — scores are not directly comparable to benchmarks reported with the default setting
+
 ---
 
 ## 📌 Roadmap
@@ -152,8 +153,8 @@ The translated Darija audio will be saved to `data/results/`.
 - [x] MarianMT fine-tuning on DODa
 - [x] Edge TTS synthesis
 - [x] BLEU evaluation
+- [x] Validation loss tracking during training
 - [ ] Gradio UI for live demo
-- [ ] Validation loss tracking during training
 - [ ] Improve BLEU score with larger dataset or `transformer-big` variant
 - [ ] Native Darija TTS voice
 - [ ] Unit tests (`tests/test_pipeline.py`)
