@@ -14,13 +14,25 @@ if __name__=="__main__":
 
     param = sys.argv[1]
     print("Étape : Transcription")
-    text_audio = transcribe(param)
+    try:
+        text_audio = transcribe(param)
+    except Exception as e:
+        print(f"Erreur STT : {e}")
+        sys.exit(1)
     print(text_audio)
     print("Étape : Translation")
-    text_traduit = translate(text_audio)
+    try:
+        text_traduit = translate(text_audio)
+    except Exception as e:
+        print(f"Erreur Translation : {e}")
+        sys.exit(1)
     print(f"Texte Traduit : {text_traduit}")
     print("Étape : Synthetise")
-    nom_fichier = os.path.basename(param)
-    nom_audio= os.path.splitext(nom_fichier)[0]
-    output_path = f"data/results/{nom_audio}_darija.mp3"
-    synthetise(text_traduit,output_path)
+    try:
+        nom_fichier = os.path.basename(param)
+        nom_audio= os.path.splitext(nom_fichier)[0]
+        output_path = f"data/results/{nom_audio}_darija.mp3"
+        synthetise(text_traduit,output_path)
+    except Exception as e:
+        print(f"Erreur TTS : {e}")
+        sys.exit(1)
