@@ -3,9 +3,11 @@ import pandas as pd
 from pathlib import Path
 from transformers import MarianTokenizer, MarianMTModel
 
-test_path = "/content/lost-in-darija/data/Test.csv"
-tokenizer = MarianTokenizer.from_pretrained("/content/lost-in-darija/models/fine_tuned_marian")
-model = MarianMTModel.from_pretrained("/content/lost-in-darija/models/fine_tuned_marian")
+
+test_path = Path(__file__).parent.parent.parent / "data" / "Test.csv"
+model_path = Path(__file__).parent.parent.parent / "models" / "fine_tuned_marian_v2"
+tokenizer = MarianTokenizer.from_pretrained(model_path)
+model = MarianMTModel.from_pretrained(model_path)
 model = model.to("cuda")
 
 def translate(phrases: list[str]) :
@@ -19,14 +21,14 @@ def translate(phrases: list[str]) :
 
 batch_size = 32
 test_df = pd.read_csv(test_path)
-hypohteses = []
+hypotheses = []
 references = []
 for index in range(0,len(test_df["eng"]),batch_size):
     predicted_phrase = translate(test_df["eng"][index:index+batch_size])
-    hypohteses.extend(predicted_phrase)
+    hypotheses.extend(predicted_phrase)
 references = [list(test_df["darija_ar"])]
 
 
 bleu = BLEU(max_ngram_order=3)
-bleu_score = bleu.corpus_score(hypohteses,references)
+bleu_score = bleu.corpus_score(hypotheses,references)
 print(f"\n",{bleu_score})
