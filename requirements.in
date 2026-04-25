@@ -1,0 +1,9 @@
+openai-whisper
+transformers
+sentencepiece
+sacrebleu
+edge-tts
+sounddevice
+soundfile
+torch
+pandas
