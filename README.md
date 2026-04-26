@@ -165,5 +165,5 @@ The translated Darija audio will be saved to `data/results/`.
 
 ## 👤 Author
 
-**Ilyass** — 3rd-year Computer Engineering Student, INSA Rouen (ML/AI track)  
-[GitHub](https://github.com/Ilyass-42) · [LinkedIn](https://www.linkedin.com/in/ilyass-el-assad-965598321/)
+**Ilyass** — 3rd-year Computer Engineering Student  
+[GitHub](https://github.com/Ilyass-42) 
