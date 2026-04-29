@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -58,7 +59,8 @@ scheduler = get_cosine_schedule_with_warmup(
 )
 
 
-writer = SummaryWriter("runs/fine_tune_v3")
+run_name = datetime.now().strftime("fine_tune_v3_%Y%m%d_%H%M%S")
+writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
 
