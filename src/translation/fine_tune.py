@@ -1,8 +1,10 @@
 import pandas as pd
-from transformers import MarianTokenizer, MarianMTModel, DataCollatorForSeq2Seq
+from transformers import MarianTokenizer, MarianMTModel, DataCollatorForSeq2Seq,get_cosine_schedule_with_warmup
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
+from torch.utils.tensorboard import SummaryWriter
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -44,7 +46,22 @@ dataloader_validation = DataLoader(Darija_Dataset_Validation, batch_size=16, col
 lr = 2e-5
 optimizer = AdamW(model.parameters(),lr=lr)
 num_epoch = 8
-best_val_loss = 1000000000000
+best_val_loss = float("inf")
+
+num_training_steps = num_epoch * len(dataloader)
+num_warmup_steps   = int(0.06 * num_training_steps)
+
+scheduler = get_cosine_schedule_with_warmup(
+    optimizer,
+    num_warmup_steps=num_warmup_steps,
+    num_training_steps=num_training_steps
+)
+
+
+writer = SummaryWriter("runs/fine_tune_v3")
+global_step = 0
+
+
 
 model.train()
 for epoch in range(num_epoch):
@@ -52,6 +69,8 @@ for epoch in range(num_epoch):
     num_batch_train = 0
     for batch in dataloader:
         num_batch_train +=1
+        global_step +=1
+
         optimizer.zero_grad()
         output = model(input_ids = batch["input_ids"].to(device) ,
                     attention_mask = batch["attention_mask"].to(device), 
@@ -60,8 +79,16 @@ for epoch in range(num_epoch):
         sum_train_loss += loss.item()
         loss.backward()
         optimizer.step()
-    print(f"Epoch : {epoch} - Train Loss {sum_train_loss/num_batch_train}")
+        scheduler.step()
+
+        writer.add_scalar("Loss/train_batch",loss.item(),global_step)
+        writer.add_scalar("LR",scheduler.get_last_lr()[0],global_step)
+    avg_train_loss = sum_train_loss / num_batch_train
+    writer.add_scalar("Loss/train_epoch", avg_train_loss, epoch)
+    print(f"Epoch : {epoch} - Train Loss {avg_train_loss}")
+    
     model.eval()
+    
     sum_val_loss = 0
     num_batch_val = 0
     for batch in dataloader_validation:
@@ -72,10 +99,15 @@ for epoch in range(num_epoch):
                         labels = batch["labels"].to(device))
             val_loss = val_output.loss.item()
             sum_val_loss += val_loss
-    model.train()
 
-    print(f"Epoch : {epoch} - Validation Loss {sum_val_loss/num_batch_val}")
-    if sum_val_loss/num_batch_val <= best_val_loss:
-        best_val_loss = sum_val_loss/num_batch_val
+    
+    avg_val_loss = sum_val_loss/num_batch_val
+    writer.add_scalar("Loss/val_epoch", avg_val_loss, epoch)
+    print(f"Epoch : {epoch} - Validation Loss {avg_val_loss}")
+    if avg_val_loss <= best_val_loss:
+        best_val_loss = avg_val_loss
         model.save_pretrained("./models/fine_tuned_marian")
         tokenizer.save_pretrained("./models/fine_tuned_marian")
+    model.train()
+
+writer.close()
