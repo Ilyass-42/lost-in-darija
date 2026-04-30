@@ -75,7 +75,7 @@ for epoch in range(num_epoch):
         global_step +=1
 
         optimizer.zero_grad()
-        with autocast(device_type="cuda"):
+        with autocast():
             output = model(input_ids = batch["input_ids"].to(device) ,
                         attention_mask = batch["attention_mask"].to(device), 
                         labels = batch["labels"].to(device))
@@ -99,7 +99,7 @@ for epoch in range(num_epoch):
     for batch in dataloader_validation:
         num_batch_val +=1
         with torch.no_grad():
-            with autocast(device_type="cuda"):
+            with autocast():
                 val_output = model(input_ids = batch["input_ids"].to(device) ,
                             attention_mask = batch["attention_mask"].to(device), 
                             labels = batch["labels"].to(device))
