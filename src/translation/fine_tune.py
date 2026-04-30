@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
-
+from torch.cuda.amp import autocast, GradScaler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -59,11 +59,12 @@ scheduler = get_cosine_schedule_with_warmup(
 )
 
 
-run_name = datetime.now().strftime("fine_tune_v3_%Y%m%d_%H%M%S")
+run_name = datetime.now().strftime("fine_tune_v4_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
 
+scaler = GradScaler(device="cuda")
 
 model.train()
 for epoch in range(num_epoch):
@@ -74,13 +75,15 @@ for epoch in range(num_epoch):
         global_step +=1
 
         optimizer.zero_grad()
-        output = model(input_ids = batch["input_ids"].to(device) ,
-                    attention_mask = batch["attention_mask"].to(device), 
-                    labels = batch["labels"].to(device))
-        loss = output.loss
+        with autocast(device_type="cuda"):
+            output = model(input_ids = batch["input_ids"].to(device) ,
+                        attention_mask = batch["attention_mask"].to(device), 
+                        labels = batch["labels"].to(device))
+            loss = output.loss
         sum_train_loss += loss.item()
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         scheduler.step()
 
         writer.add_scalar("Loss/train_batch",loss.item(),global_step)
@@ -96,10 +99,11 @@ for epoch in range(num_epoch):
     for batch in dataloader_validation:
         num_batch_val +=1
         with torch.no_grad():
-            val_output = model(input_ids = batch["input_ids"].to(device) ,
-                        attention_mask = batch["attention_mask"].to(device), 
-                        labels = batch["labels"].to(device))
-            val_loss = val_output.loss.item()
+            with autocast(device_type="cuda"):
+                val_output = model(input_ids = batch["input_ids"].to(device) ,
+                            attention_mask = batch["attention_mask"].to(device), 
+                            labels = batch["labels"].to(device))
+                val_loss = val_output.loss.item()
             sum_val_loss += val_loss
 
     
