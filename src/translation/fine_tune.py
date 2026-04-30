@@ -64,7 +64,7 @@ writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
 
-scaler = GradScaler(device="cuda")
+scaler = GradScaler()
 
 model.train()
 for epoch in range(num_epoch):
