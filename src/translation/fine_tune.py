@@ -63,13 +63,15 @@ scheduler = get_cosine_schedule_with_warmup(
 )
 
 
-run_name = datetime.now().strftime("fine_tune_v4_%Y%m%d_%H%M%S")
+run_name = datetime.now().strftime("fine_tune_v5_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
 
-
-scaler = GradScaler(device_type=device_type)
+if torch.__version__ >= "2.3":
+    scaler = GradScaler(device_type=device_type)
+else:
+    scaler = GradScaler()
 
 model.train()
 for epoch in range(num_epoch):
