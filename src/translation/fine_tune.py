@@ -68,10 +68,11 @@ writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
 
-if torch.__version__ >= "2.3":
+try:
     scaler = GradScaler(device_type=device_type)
-else:
+except TypeError:
     scaler = GradScaler()
+
 
 model.train()
 for epoch in range(num_epoch):
