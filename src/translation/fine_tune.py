@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -63,8 +63,10 @@ run_name = datetime.now().strftime("fine_tune_v4_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
+device_type = device.type
 
-scaler = GradScaler()
+
+scaler = GradScaler(device_type=device_type)
 
 model.train()
 for epoch in range(num_epoch):
@@ -75,7 +77,7 @@ for epoch in range(num_epoch):
         global_step +=1
 
         optimizer.zero_grad()
-        with autocast():
+        with autocast(device_type=device_type):
             output = model(input_ids = batch["input_ids"].to(device) ,
                         attention_mask = batch["attention_mask"].to(device), 
                         labels = batch["labels"].to(device))
@@ -99,7 +101,7 @@ for epoch in range(num_epoch):
     for batch in dataloader_validation:
         num_batch_val +=1
         with torch.no_grad():
-            with autocast():
+            with autocast(device_type=device_type):
                 val_output = model(input_ids = batch["input_ids"].to(device) ,
                             attention_mask = batch["attention_mask"].to(device), 
                             labels = batch["labels"].to(device))
