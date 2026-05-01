@@ -3,6 +3,10 @@ data/sentences.csv
 __pycache__/
 *.py[codz]
 *$py.class
+tokens.txt
+data/Train_v5_backup.csv
+data/Val_v5_backup.csv
+
 
 push_hf.py
 
