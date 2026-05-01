@@ -63,7 +63,7 @@ scheduler = get_cosine_schedule_with_warmup(
 )
 
 
-run_name = datetime.now().strftime("fine_tune_v5_%Y%m%d_%H%M%S")
+run_name = datetime.now().strftime("fine_tune_v6_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
