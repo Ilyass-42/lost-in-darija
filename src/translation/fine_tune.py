@@ -6,6 +6,7 @@ from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from torch.amp import autocast, GradScaler
+import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -20,19 +21,22 @@ class DarijaDataset(Dataset):
         self.sources = df["eng"].tolist()
         self.targets = df["darija_ar"].tolist()
         self.tokenizer = tokenizer
+        self.tokenized_source = self.tokenizer([">>ary<< "+source for source in self.sources],return_tensors=None,padding=False,truncation=True)
+        self.tokenized_target = self.tokenizer(self.targets,return_tensors=None,padding=False,truncation=True)
+
     def __len__(self):
         return len(self.sources)
     def __getitem__(self, index):
-        source = ">>ary<< " + self.sources[index]
-        target = self.targets[index]
-        source = self.tokenizer(source,return_tensors="pt",padding=False,truncation=True)
-        target = self.tokenizer(target,return_tensors="pt",padding=False,truncation=True)
         return {
-            "input_ids" :source["input_ids"].squeeze(),
-            "attention_mask" :source["attention_mask"].squeeze(),
-            "labels" : target["input_ids"].squeeze()
-        }
-    
+            "input_ids":self.tokenized_source["input_ids"][index],
+            "labels":self.tokenized_target["input_ids"][index],
+            "attention_mask":self.tokenized_source["attention_mask"][index]
+            }
+
+device_type = device.type
+pin_memory = (device_type=="cuda")
+
+
 train_path = "./data/Train.csv"
 Darija_Dataset = DarijaDataset(train_path,tokenizer) 
 
@@ -40,8 +44,8 @@ val_path = "./data/Val.csv"
 Darija_Dataset_Validation = DarijaDataset(val_path,tokenizer)
 
 collator = DataCollatorForSeq2Seq(tokenizer, model=model)
-dataloader = DataLoader(Darija_Dataset, batch_size=16, shuffle=True, collate_fn=collator)
-dataloader_validation = DataLoader(Darija_Dataset_Validation, batch_size=16, collate_fn=collator)
+dataloader = DataLoader(Darija_Dataset, batch_size=16, shuffle=True, collate_fn=collator,num_workers=min(4,os.cpu_count()),pin_memory=pin_memory)
+dataloader_validation = DataLoader(Darija_Dataset_Validation, batch_size=16, collate_fn=collator,num_workers=min(4,os.cpu_count()),pin_memory=pin_memory)
 
 
 lr = 2e-5
@@ -63,7 +67,6 @@ run_name = datetime.now().strftime("fine_tune_v4_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
-device_type = device.type
 
 
 scaler = GradScaler(device_type=device_type)
