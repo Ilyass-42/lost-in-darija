@@ -15,7 +15,7 @@ def load_and_prepare(subset_name):
     dataset = load_dataset("atlasia/darija_english", subset_name)
     df = dataset["train"].to_pandas()
     df.rename(columns={"darija":"darija_ar","english":"eng"},inplace=True)
-    df = df.drop(["id","source"],axis=1)
+    df = df[["eng", "darija_ar"]]
     df = df[df["darija_ar"].apply(is_arabic)]
     return df
 
