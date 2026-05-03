@@ -2,12 +2,15 @@ from sacrebleu.metrics import BLEU
 import pandas as pd
 from pathlib import Path
 from transformers import MarianTokenizer, MarianMTModel
+from peft import PeftModel
 
 
 test_path = Path(__file__).parent.parent.parent / "data" / "Test.csv"
-model_path = Path(__file__).parent.parent.parent / "models" / "fine_tuned_marian"
+model_path = Path(__file__).parent.parent.parent / "models" / "fine_tuned_marian_big"
+
 tokenizer = MarianTokenizer.from_pretrained(model_path)
-model = MarianMTModel.from_pretrained(model_path)
+base_model = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-tc-big-en-ar")
+model = PeftModel.from_pretrained(base_model, model_path)
 model = model.to("cuda")
 
 def translate(phrases: list[str]) :
