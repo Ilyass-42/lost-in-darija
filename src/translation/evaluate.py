@@ -11,6 +11,7 @@ model_path = Path(__file__).parent.parent.parent / "models" / "fine_tuned_marian
 tokenizer = MarianTokenizer.from_pretrained(model_path)
 base_model = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-tc-big-en-ar")
 model = PeftModel.from_pretrained(base_model, model_path)
+model = model.merge_and_unload()
 model = model.to("cuda")
 model.eval()
 
