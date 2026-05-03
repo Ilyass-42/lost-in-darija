@@ -70,7 +70,7 @@ optimizer = AdamW(filter(lambda p:p.requires_grad, model.parameters()),lr=lr)
 num_epoch = 8
 best_val_loss = float("inf")
 
-num_training_steps = num_epoch * len(dataloader)
+num_training_steps = num_epoch * len(dataloader) // accumulation_steps
 num_warmup_steps   = int(0.06 * num_training_steps)
 
 scheduler = get_cosine_schedule_with_warmup(
@@ -80,7 +80,7 @@ scheduler = get_cosine_schedule_with_warmup(
 )
 
 
-run_name = datetime.now().strftime("fine_tune_big_v1_%Y%m%d_%H%M%S")
+run_name = datetime.now().strftime("fine_tune_big_v2_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
@@ -97,7 +97,7 @@ for epoch in range(num_epoch):
     num_batch_train = 0
     for batch_index,batch in enumerate(dataloader):
         num_batch_train +=1
-        global_step +=1
+        
 
         with autocast(device_type=device_type):
             output = model(input_ids = batch["input_ids"].to(device) ,
@@ -112,6 +112,7 @@ for epoch in range(num_epoch):
             optimizer.zero_grad()
             scaler.update()
             scheduler.step()
+            global_step +=1
 
         writer.add_scalar("Loss/train_batch",loss.item(),global_step)
         writer.add_scalar("LR",scheduler.get_last_lr()[0],global_step)
