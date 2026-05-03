@@ -12,6 +12,7 @@ tokenizer = MarianTokenizer.from_pretrained(model_path)
 base_model = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-tc-big-en-ar")
 model = PeftModel.from_pretrained(base_model, model_path)
 model = model.to("cuda")
+model.eval()
 
 def translate(phrases: list[str]) :
     phrases = [">>ary<< " + texte for texte in phrases]
