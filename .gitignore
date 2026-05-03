@@ -6,7 +6,8 @@ __pycache__/
 tokens.txt
 data/Train_v5_backup.csv
 data/Val_v5_backup.csv
-
+.gradio
+data/*.wav
 
 push_hf.py
 
