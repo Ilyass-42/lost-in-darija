@@ -15,6 +15,12 @@ A speech-to-speech translation pipeline that converts spoken English into Morocc
 
 ---
 
+## 💬 Example
+
+| Input (English) | Output (Darija, Arabic script) |
+|---|---|
+| "Excuse me, can you help me find a good restaurant?" | سمح ليا, واش تقدر تعاوني نلقى شي ريسطورة زوينة? |
+
 ## 🗂️ Project Structure
 ```
 lost-in-darija/
