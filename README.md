@@ -2,6 +2,8 @@
 
 A speech-to-speech translation pipeline that converts spoken English into Moroccan Darija, designed for tourists navigating Morocco.
 
+📝 **[Read the full write-up](./writeup.md)** how a model that scored 18.30 BLEU on its own test set dropped to 10.23 on an independent benchmark, what that revealed about the data, and the engineering lessons from building the fix.
+
 ---
 
 ## ✨ Features
