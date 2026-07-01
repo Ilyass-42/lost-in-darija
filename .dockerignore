@@ -1,0 +1,7 @@
+venv_darija/
+models/
+data/
+notebooks/
+.git
+__pycache__/
+*.pyc

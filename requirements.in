@@ -7,3 +7,4 @@ sounddevice
 soundfile
 torch
 pandas
+gradio

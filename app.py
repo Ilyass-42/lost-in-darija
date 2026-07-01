@@ -9,4 +9,4 @@ interface = gr.Interface(
     outputs=[gr.Textbox(label="Transcription"),gr.Textbox(label="Traslation"),gr.Audio(label="Darija Audio")]
 )
 
-interface.launch()
+interface.launch(server_name="0.0.0.0",server_port=7860)
