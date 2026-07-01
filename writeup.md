@@ -16,23 +16,13 @@ I then added validation loss tracking to `fine_tune.py`: `model.eval()`, `torch.
 
 ## Chasing a Better Model and a Dead End
 
-With a working baseline, I tested `Helsinki-NLP/opus-mt-tc-big-en-ar` (~600M parameters 
-vs ~77M for the base model). Full fine-tuning was out of the question on a T4 (15GB VRAM) so I used **LoRA** (Low-Rank Adaptation via `peft`), freezing the base weights and 
-injecting trainable rank-decomposition matrices into the attention layers. Configuration: 
-r=16, lora_alpha=32, target_modules on q/k/v/out projections, ~1% trainable parameters.
+With a working baseline, I tested `Helsinki-NLP/opus-mt-tc-big-en-ar` (~600M parameters vs ~77M for the base model). Full fine-tuning was out of the question on a T4 (15GB VRAM) so I used **LoRA** (Low-Rank Adaptation via `peft`), freezing the base weights and injecting trainable rank-decomposition matrices into the attention layers. Configuration: r=16, lora_alpha=32, target_modules on q/k/v/out projections, ~1% trainable parameters.
 
-It failed before training even started. The tokenizer produced a **UNK rate of 32.71%** 
-on Darija Arabic text nearly one in three tokens was unknown. The model generated 
-incoherent sequences. The larger model had been trained on a different Arabic 
-data distribution that covered Darija even less than the base model, despite its higher 
-reported BLEU.
+It failed before training even started. The tokenizer produced a **UNK rate of 32.71%** on Darija Arabic text nearly one in three tokens was unknown. The model generated incoherent sequences. The larger model had been trained on a different Arabic data distribution that covered Darija even less than the base model, despite its higher reported BLEU.
 
-Back to `opus-mt-en-ar`: 0% UNK on the same data. Its SentencePiece vocabulary, 
-despite being MSA-oriented, covers Darija script well enough for fine-tuning to work.
+Back to `opus-mt-en-ar`: 0% UNK on the same data. Its SentencePiece vocabulary, despite being MSA-oriented, covers Darija script well enough for fine-tuning to work.
 
-**Lesson:** always check tokenizer UNK rate on your target data before committing to a 
-base model. It's a better selection criterion than benchmark BLEU on a different test set.
-
+**Lesson:** always check tokenizer UNK rate on your target data before committing to a base model. It's a better selection criterion than benchmark BLEU on a different test set.
 
 ## The Number That Didn't Add Up
 
@@ -65,13 +55,13 @@ The pattern was clear. Categories well-represented in DODa scored well. Categori
 
 This is a classic distribution shift: training and test sets drawn from different distributions. The bottleneck was the data, not the model architecture.
 
-## What Comes Next
+## Attempting the Fix: Data Augmentation
 
-The fix is targeted data augmentation. Rather than generating random Darija pairs, I'm using TerjamaBench's own English column as seed sentences directly targeting the benchmark's distribution. Four categories are prioritized: Common Phrases, Named Entities, Numeric/Date, and Mixed Language. Idioms are excluded: LLM hallucination risk is high and they're outside the tourist use case anyway.
+The fix I attempted was targeted data augmentation. Rather than generating random Darija pairs, I used TerjamaBench's own English column as seed sentences directly targeting the benchmark's distribution. Four categories were prioritized: Common Phrases, Named Entities, Numeric/Date, and Mixed Language. Idioms were excluded: LLM hallucination risk is high and they're outside the tourist use case anyway.
 
-The augmentation pipeline: NVIDIA NIM (Qwen) generates candidate pairs → LLM judge evaluates fluency and authenticity → native speaker spot-check before any pair enters training data.
+The pipeline: NVIDIA NIM (Qwen) generated candidate pairs → an LLM judge evaluated fluency and authenticity → a native speaker spot-check before any pair would enter training data.
 
-The broader lesson: a BLEU score on a held-out test set from the same distribution as training is not a generalization benchmark. Evaluating on an independent, domain-specific dataset is what surfaces the real gaps and tells you exactly where to look.
+The broader lesson, independent of how the attempt ended: a BLEU score on a held-out test set from the same distribution as training is not a generalization benchmark. Evaluating on an independent, domain-specific dataset is what surfaces the real gaps and tells you exactly where to look.
 
 ## Engineering Lessons
 
@@ -85,6 +75,17 @@ Building the generator-judge augmentation pipeline surfaced lessons that have le
 
 **Reliability is its own quality metric.** Repeated availability issues with one provider were enough on their own to justify migrating to a different stack for generation and judging. **Lesson:** a model's accuracy doesn't matter if the API serving it isn't stable enough to run a pipeline against.
 
+## Pausing Augmentation, Shipping What Works
+
+Past the engineering issues above, a deeper problem persisted: the judge itself wasn't reliable for Darija-specific nuance. A smaller judge model avoided rate limits but missed semantic errors AM/PM inversions, wrong dates, mistranslated status words slipping through as "valid." A larger judge caught more, but hit rate limits hard enough to stall the pipeline. Few-shot examples meant to anchor the judge's criteria caused it to memorize the literal example rather than generalize the principle. One batch of 224 generated pairs was reviewed and deleted outright for quality.
+
+At that point, continuing to tune the judge had a worse cost-to-signal ratio than I was willing to pay for a portfolio project on a deadline. I paused the augmentation work rather than ship synthetic data I didn't trust, and redirected the remaining time to closing the loop on the part of the project that was fully in my control: making the pipeline something a reviewer could actually run, not just a model card with a BLEU table.
+
+## Containerizing the Pipeline
+
+The full pipeline Whisper STT, the fine-tuned MarianMT model, and edge-tts now runs end-to-end inside a single Docker image, exposing the existing Gradio UI on port 7860. The model is pulled from the HuggingFace Hub at build time rather than copied from local disk, so the image builds identically on any machine. The image is CPU-only by design, matching the constraint the whole project was built under.
+
+Details of the build (base image, layer ordering, model loading strategy) are documented in the repo's `Dockerfile` and `CLAUDE.md` rather than repeated here.
 
 ---
 
