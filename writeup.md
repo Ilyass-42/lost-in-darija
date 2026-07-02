@@ -87,6 +87,15 @@ The full pipeline Whisper STT, the fine-tuned MarianMT model, and edge-tts now r
 
 Details of the build (base image, layer ordering, model loading strategy) are documented in the repo's `Dockerfile` and `CLAUDE.md` rather than repeated here.
 
+
+## Shipping It
+
+With the augmentation approach paused, I containerized the pipeline and deployed it to HuggingFace Spaces so the model is actually reachable, not just a checkpoint on a hard drive. Docker SDK, CPU Basic hardware no GPU needed for inference at this scale (Whisper `tiny.en` + a 77M-parameter MarianMT model).
+
+The main friction point was git-based: HF Spaces deploys are pushed to a separate Git remote, and it's easy to commit the surface files (`Dockerfile`, `app.py`, `requirements.txt`) while missing a source directory that isn't at the repo root `src/` didn't make it into the first commit, which surfaced immediately as a `ModuleNotFoundError` at container startup. A useful reminder that "it builds" and "it imports" are two different checkpoints.
+
+The app is live at [huggingface.co/spaces/ILyass-42/lost-in-darija](https://huggingface.co/spaces/ILyass-42/lost-in-darija).
+
 ---
 
 *Model published at [ILyass-42/lost-in-darija-marian](https://huggingface.co/ILyass-42/lost-in-darija-marian). Dataset: DODa. Evaluation: TerjamaBench (AtlasIA).*

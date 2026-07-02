@@ -1,5 +1,7 @@
 # 🗣️ Lost in Darija
 
+🔗 **[Try it live on HuggingFace Spaces](https://huggingface.co/spaces/ILyass-42/lost-in-darija)**
+
 A speech-to-speech translation pipeline that converts spoken English into Moroccan Darija, designed for tourists navigating Morocco.
 
 📝 **[Read the full write-up](./writeup.md)** how a model that scored 18.30 BLEU on its own test set dropped to 10.23 on an independent benchmark, what that revealed about the data, and the engineering lessons from building the fix.
@@ -167,6 +169,7 @@ The translated Darija audio will be saved to `data/results/`.
 - [x] BLEU evaluation
 - [x] Validation loss tracking during training
 - [x] Gradio UI for live demo
+- [x] Deployed to HuggingFace Spaces
 - [ ] Improve BLEU score with larger dataset or `transformer-big` variant
 - [ ] Native Darija TTS voice
 - [ ] Unit tests (`tests/test_pipeline.py`)
