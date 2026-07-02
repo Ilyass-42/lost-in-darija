@@ -2,10 +2,13 @@
 
 import whisper
 import sys
+import os
 
 _model = None
 
 def transcribe(path : str) :
+    if not path or not os.path.exists(path) or os.path.getsize(path) == 0:
+        raise RuntimeError("NO Audio detected, Please try again.")
     global _model
     if _model is None:
         _model = whisper.load_model("tiny.en")

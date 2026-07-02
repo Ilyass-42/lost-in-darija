@@ -4,19 +4,20 @@ from translation.translate import translate
 from tts.synthetise import synthetise
 import sys
 import os
+import gradio as gr
 
 def run_pipline(audio_path):
         print("Étape : Transcription")
         try:
             text_audio = transcribe(audio_path)
         except Exception as e:
-            raise RuntimeError(f"Erreur STT : {e}")
+            raise gr.Error(f"Erreur STT : {e}")
         
         print("Étape : Translation")
         try:
             text_traduit = translate(text_audio)
         except Exception as e:
-            raise RuntimeError(f"Erreur Translation : {e}")
+            raise gr.Error(f"Erreur Translation : {e}")
 
         print("Étape : Synthetise")
         try:
@@ -25,7 +26,7 @@ def run_pipline(audio_path):
             output_path = f"data/results/{nom_audio}_darija.mp3"
             synthetise(text_traduit,output_path)
         except Exception as e:
-            raise RuntimeError(f"Erreur TTS : {e}")
+            raise gr.Error(f"Erreur TTS : {e}")
         
         return text_audio, text_traduit, output_path
 
