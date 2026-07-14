@@ -120,8 +120,8 @@ for epoch in range(num_epoch):
     print(f"Epoch : {epoch} - Validation Loss {avg_val_loss}")
     if avg_val_loss <= best_val_loss:
         best_val_loss = avg_val_loss
-        model.save_pretrained("./models/fine_tuned_marian")
-        tokenizer.save_pretrained("./models/fine_tuned_marian")
+        model.save_pretrained("./models/fine_tuned_marian_v7")
+        tokenizer.save_pretrained("./models/fine_tuned_marian_v7")
     model.train()
 
 writer.close()

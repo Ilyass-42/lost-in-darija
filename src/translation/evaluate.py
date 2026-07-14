@@ -2,23 +2,22 @@ from sacrebleu.metrics import BLEU
 import pandas as pd
 from pathlib import Path
 from transformers import MarianTokenizer, MarianMTModel
-from peft import PeftModel
+import torch
 
 
 test_path = Path(__file__).parent.parent.parent / "data" / "Test.csv"
-model_path = Path(__file__).parent.parent.parent / "models" / "fine_tuned_marian_big"
+model_path = Path(__file__).parent.parent.parent / "models" / "fine_tuned_marian_v7"
 
 tokenizer = MarianTokenizer.from_pretrained(model_path)
-base_model = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-tc-big-en-ar")
-model = PeftModel.from_pretrained(base_model, model_path)
-model = model.merge_and_unload()
-model = model.to("cuda")
+model = MarianMTModel.from_pretrained(model_path)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = model.to(device)
 model.eval()
 
 def translate(phrases: list[str]) :
     phrases = [">>ary<< " + texte for texte in phrases]
     inputs = tokenizer(phrases, return_tensors="pt",padding=True,truncation= True)
-    inputs = {k: v.to("cuda") for k, v in inputs.items()}
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     translated = model.generate(**inputs,num_beams=4,length_penalty=1.2)
     res = [tokenizer.decode(t, skip_special_tokens=True) for t in translated]
 
