@@ -22,7 +22,7 @@ class DarijaDataset(Dataset):
         self.targets = df["darija_ar"].tolist()
         self.tokenizer = tokenizer
         self.tokenized_source = self.tokenizer([">>ary<< "+source for source in self.sources],return_tensors=None,padding=False,truncation=True)
-        self.tokenized_target = self.tokenizer(self.targets,return_tensors=None,padding=False,truncation=True)
+        self.tokenized_target = self.tokenizer(text_target=self.targets,return_tensors=None,padding=False,truncation=True)
 
     def __len__(self):
         return len(self.sources)
