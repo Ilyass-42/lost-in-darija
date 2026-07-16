@@ -9,7 +9,7 @@ ds = load_dataset("atlasia/TerjamaBench")
 print(set(ds["test"]["topic"]))
 
 
-model_path = Path(__file__).parent / "models" / "fine_tuned_marian_v2"
+model_path = Path(__file__).parent / "models" / "fine_tuned_marian_v7"
 
 tokenizer = MarianTokenizer.from_pretrained(model_path)
 model = MarianMTModel.from_pretrained(model_path)
