@@ -1,3 +1,4 @@
+import torch
 from datasets import load_dataset
 from sacrebleu.metrics import BLEU
 from pathlib import Path
@@ -13,13 +14,14 @@ model_path = Path(__file__).parent / "models" / "fine_tuned_marian_v7"
 
 tokenizer = MarianTokenizer.from_pretrained(model_path)
 model = MarianMTModel.from_pretrained(model_path)
-model = model.to("cpu")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = model.to(device)
 model.eval()
 
 def translate(phrases: list[str]) :
     phrases = [">>ary<< " + texte for texte in phrases]
     inputs = tokenizer(phrases, return_tensors="pt",padding=True,truncation= True)
-    inputs = {k: v.to("cpu") for k, v in inputs.items()}
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     translated = model.generate(**inputs,num_beams=4,length_penalty=1.2)
     res = [tokenizer.decode(t, skip_special_tokens=True) for t in translated]
 
