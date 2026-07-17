@@ -33,6 +33,6 @@ for index in range(0,len(test_df["eng"]),batch_size):
 references = [list(test_df["darija_ar"])]
 
 
-bleu = BLEU(max_ngram_order=3)
+bleu = BLEU(max_ngram_order=4)
 bleu_score = bleu.corpus_score(hypotheses,references)
 print(f"\n",{bleu_score})
