@@ -1,5 +1,7 @@
 FROM python:3.14-slim
 
+ENV PYTHONUNBUFFERED=1
+
 # ffmpeg est requis par Whisper pour décoder l'audio
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 
