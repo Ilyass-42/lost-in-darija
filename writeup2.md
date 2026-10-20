@@ -150,3 +150,48 @@ The common sentences are short and frequent: "thanks", "hello", "turn right", "h
 ### Next step
 
 Build splits A and B. Check that split B gives 0 with `scripts/check_overlap.py`.
+
+
+---
+
+## Entry 3 (21 Oct 2026): Splits A and B
+
+### What I built
+
+Script: `scripts/make_splits.py`. Check: `scripts/verify_splits.py`. Commit `30e89cc`.
+
+1. I extracted the human rows of DODa-500K in Colab and saved them as `data/doda_human.csv` (48,350 rows).
+2. I normalized the English sentences and removed identical pairs: 47,978 rows, 44,652 unique English sentences.
+3. I removed every TerjamaBench English sentence from the data, before the split: 70 sentences, 257 rows. Result: 47,721 rows, 44,582 unique English sentences.
+4. Split A: random, row by row (`train_test_split`), 80/10/10.
+5. Split B: grouped by normalized English sentence (`GroupShuffleSplit`), 80/10/10 of the groups.
+6. Both splits use the same seed (42).
+
+The 70 TerjamaBench sentences have 257 rows: almost 4 Darija translations per sentence. They are short and frequent phrases.
+
+### Results
+
+| Split | Train | Val | Test |
+| --- | --- | --- | --- |
+| A (rows) | 38,176 | 4,772 | 4,773 |
+| B (rows) | 38,097 | 4,821 | 4,803 |
+
+Split B uses proportions of groups, not rows. Its row proportions are 79.8 / 10.1 / 10.1%.
+
+| Shared English sentences | A | B |
+| --- | --- | --- |
+| Test ∩ Train | 433 (9.2% of 4,724 unique Test sentences) | 0 |
+| Val ∩ Train | 450 | 0 |
+| Test ∩ Val | 91 | 0 |
+
+The script stops with an error if split B has a shared sentence (`assert`). I read the saved files again with `verify_splits.py`: same numbers.
+
+Split A reproduces the old situation: 9.2% here, 9.5% in my old files.
+
+### Limit
+
+Split B has no shared English sentence after normalization. Paraphrases ("thank you" / "thanks") and spelling variants ("thank u") can still be in two sets. I call it a grouped split, not a leakage-free split.
+
+### Next step
+
+Train the small model (MarianMT `opus-mt-en-ar`) on A and on B, with the same settings. Evaluate both on their own Test set and on TerjamaBench.
