@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 from transformers import MarianTokenizer, MarianMTModel, DataCollatorForSeq2Seq,get_cosine_schedule_with_warmup
 import torch
@@ -7,6 +8,21 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from torch.amp import autocast, GradScaler
 import os
+
+SEED = 42
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--split", type=str, required=True, choices=["A", "B"])
+parser.add_argument("--run_name", type=str, required=True)
+
+args = parser.parse_args()
+
+split = args.split
+run_name = args.run_name
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -37,10 +53,10 @@ device_type = device.type
 pin_memory = (device_type=="cuda")
 
 
-train_path = "./data/Train.csv"
+train_path = f"./data/splits/{split}/train.csv"
 Darija_Dataset = DarijaDataset(train_path,tokenizer) 
 
-val_path = "./data/Val.csv"
+val_path = f"./data/splits/{split}/val.csv"
 Darija_Dataset_Validation = DarijaDataset(val_path,tokenizer)
 
 collator = DataCollatorForSeq2Seq(tokenizer, model=model)
@@ -63,7 +79,7 @@ scheduler = get_cosine_schedule_with_warmup(
 )
 
 
-run_name = datetime.now().strftime("fine_tune_v6_%Y%m%d_%H%M%S")
+run_name = datetime.now().strftime(f"{run_name}_%Y%m%d_%H%M%S")
 writer = SummaryWriter(f"runs/{run_name}")
 global_step = 0
 
@@ -120,8 +136,8 @@ for epoch in range(num_epoch):
     print(f"Epoch : {epoch} - Validation Loss {avg_val_loss}")
     if avg_val_loss <= best_val_loss:
         best_val_loss = avg_val_loss
-        model.save_pretrained("./models/fine_tuned_marian_v7")
-        tokenizer.save_pretrained("./models/fine_tuned_marian_v7")
+        model.save_pretrained(f"./models/{run_name}")
+        tokenizer.save_pretrained(f"./models/{run_name}")
     model.train()
 
 writer.close()
