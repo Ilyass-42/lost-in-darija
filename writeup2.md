@@ -195,3 +195,182 @@ Split B has no shared English sentence after normalization. Paraphrases ("thank 
 ### Next step
 
 Train the small model (MarianMT `opus-mt-en-ar`) on A and on B, with the same settings. Evaluate both on their own Test set and on TerjamaBench.
+
+---
+
+## Entry 4 (24 Oct 2026): Training on splits A and B, evaluation and leakage analysis
+
+### What I changed in the code
+
+**`src/translation/fine_tune.py`** (commit `4786421`)
+
+- New arguments: `--split` (`A` or `B`) and `--run_name`.
+- Fixed seed: `torch.manual_seed(42)` and `torch.cuda.manual_seed_all(42)`, before the model and the `DataLoader`.
+- Data: `data/splits/<split>/train.csv` and `val.csv`.
+- Output folder: `models/<run_name>_<date>` and `runs/<run_name>_<date>`. A run cannot overwrite another run.
+
+**`src/translation/evaluate_mt.py`** (commit `66ef4d1`): one script for all evaluations.
+
+- Arguments: `--model` (local folder or Hub ID), `--dataset` (`test` or `terjama`), `--split` (`A` or `B`, for `test` only).
+- Decoding, the same for all models: prefix `>>ary<<`, `num_beams=4`, `length_penalty=1.2`, batch size 32.
+- Metrics: BLEU (order 4) and chrF++, with a 95% bootstrap confidence interval (1,000 resamples).
+- Output: `results/<model>_<dataset>[_<split>].csv` (English, reference, hypothesis, + `topic` for TerjamaBench) and a `.json` file (scores, intervals, signatures, decoding settings).
+
+Signatures (sacreBLEU 2.6.0):
+
+- BLEU: `nrefs:1|bs:1000|seed:12345|case:mixed|eff:no|tok:13a|smooth:exp|version:2.6.0`
+- chrF++: `nrefs:1|bs:1000|seed:12345|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.6.0`
+
+Versions: `transformers` 5.20.2, `torch` 2.11.0+cu130, `sacrebleu` 2.6.0. Hardware: Google Colab T4.
+
+### Problems found in the old evaluation scripts
+
+I read the git history of `src/translation/evaluate.py` and `evaluate_terjama.py`.
+
+| Finding | Evidence |
+| --- | --- |
+| BLEU 18.30 used `max_ngram_order=3` and no decoding options | commit `1690022` (25 Apr 2026) |
+| Beam search (`num_beams=4`, `length_penalty=1.2`) was added later | commit `8684484` (1 May 2026) |
+| TerjamaBench evaluation used model `v2`, beam search 4, order 3 | commit `59bc545` (4 May 2026) |
+| `evaluate.py` changed to order 4; `evaluate_terjama.py` stayed at order 3 | commit `36d3a11` (17 Jul 2026) |
+
+The 18.30 and the 10.23 do not use the same decoding. The "44% drop" in `writeup.md` compares two scores that are not comparable.
+
+### Training
+
+Settings, the same for A and B: `opus-mt-en-ar`, AdamW, lr 2e-5, 8 epochs, batch size 16, cosine schedule with 6% warmup, mixed precision, seed 42. The script keeps the checkpoint with the lowest validation loss.
+
+| Run | Best epoch | Validation loss |
+| --- | --- | --- |
+| `small_A_20261023_221426` | 5 | 2.5182 |
+| `small_B_20261023_224611` | 6 | 2.4892 |
+
+For both runs, the validation loss stops decreasing after epoch 5 or 6.
+
+### Results
+
+The ± value is the half-width of the 95% confidence interval.
+
+| Model | Dataset | BLEU | chrF++ | Length ratio |
+| --- | --- | --- | --- | --- |
+| base (`opus-mt-en-ar`) | Test A | 0.22 ± 0.10 | 11.20 ± 0.38 | 1.821 |
+| base | Test B | 0.25 ± 0.11 | 11.04 ± 0.37 | 1.895 |
+| base | TerjamaBench | 0.31 ± 0.18 | 16.24 ± 1.49 | 2.490 |
+| small_A | Test A | 14.06 ± 0.84 | 36.99 ± 0.68 | 0.895 |
+| small_A | TerjamaBench | 4.90 ± 1.26 | 34.28 ± 1.29 | 1.075 |
+| small_B | Test B | 13.08 ± 0.90 | 35.60 ± 0.69 | 0.894 |
+| small_B | TerjamaBench | 5.39 ± 1.38 | 34.44 ± 1.28 | 1.074 |
+
+TerjamaBench by category (about 70 sentences per category, so the intervals are large):
+
+| Category | BLEU A | BLEU B | chrF++ A | chrF++ B |
+| --- | --- | --- | --- | --- |
+| common_phrases | 6.57 | 5.44 | 40.19 | 41.56 |
+| dialect_variation | 1.52 | 1.43 | 15.04 | 15.58 |
+| educational | 4.00 | 3.93 | 31.38 | 32.29 |
+| humor | 2.79 | 2.88 | 22.08 | 22.66 |
+| idioms | 1.10 | 0.84 | 21.69 | 21.21 |
+| incorrect_spellings | 3.63 | 5.95 | 32.60 | 34.50 |
+| long_sentences | 6.28 | 5.77 | 38.09 | 37.41 |
+| mixed_language | 4.49 | 4.59 | 29.89 | 29.09 |
+| named_entities | 6.40 | 10.00 | 43.40 | 42.71 |
+| numeric_and_date | 5.44 | 6.56 | 34.67 | 35.83 |
+| religion | 4.05 | 6.58 | 34.29 | 34.54 |
+| single_words | 6.54 | 0.00 | 53.94 | 52.45 |
+
+The global TerjamaBench score is a corpus-level score. It is not the mean of the categories (mean of the 12 BLEU scores of small_A: 4.40; global: 4.90).
+
+### The base model
+
+- The tokenizer reads `>>ary<<` as one token.
+- In 9 of 10 random examples, the base model translates into Modern Standard Arabic, not Darija. Example: "take the pillow" gives خذ الوسادة; the reference is هازي لوسادا.
+- The base model also produces repetition loops. Example: "Teach me" gives `# علمني # # # # # #`.
+
+I found the loops with the length ratio of the BLEU output (1.821), then with examples.
+
+| Evaluation | Ratio > 3 | Contains `#` |
+| --- | --- | --- |
+| base, Test A | 149 / 4,773 | 76 |
+| base, TerjamaBench | 38 / 850 | 5 |
+| small_A, Test A | 2 / 4,773 | 0 |
+| small_A, TerjamaBench | 4 / 850 | 0 |
+| small_B, Test B | 3 / 4,803 | 0 |
+| small_B, TerjamaBench | 0 / 850 | 0 |
+
+On TerjamaBench, many references have 1 or 2 words. A correct translation of 4 words already gives a ratio above 3. These counts are a maximum, not an exact count of loops.
+
+### Decision: decoding
+
+I keep the current decoding (no rule against repetitions).
+
+- The loops occur almost only with the base model.
+- An option such as `no_repeat_ngram_size=3` blocks any repeated sequence of 3 tokens. Only 8 of 4,773 references of Test A contain such a sequence, so the cost is small. But it adds a setting that the paper must justify.
+- The result on the base model is a negative result: without fine-tuning, the model does not produce Darija.
+
+### BLEU-4 and short sentences
+
+BLEU-4 needs sequences of 4 words. When a group of translations contains no such sequence, sacreBLEU stops the calculation and returns 0, even if all translations are correct.
+
+| `single_words` | 4-word sequences in the translations | BLEU | chrF++ |
+| --- | --- | --- | --- |
+| small_A | 4 | 6.54 | 53.94 |
+| small_B | 0 | 0.00 | 52.45 |
+
+The BLEU difference comes from the length of the translations, not from their quality. For a single word, a long translation is more likely an error.
+
+### Analysis: seen and unseen sentences in Test A
+
+Script: `scripts/analyze_leak.py` (commit `69596b1`). I split Test A into two groups: the English sentence is in Train A ("seen") or not ("unseen"). Same model (small_A), same file, same decoding.
+
+| Group | Rows | Unique sentences | BLEU | chrF++ |
+| --- | --- | --- | --- | --- |
+| unseen | 4,307 | 4,291 | 13.84 ± 0.83 | 37.23 ± 0.67 |
+| seen | 466 | 433 | 18.45 ± 4.60 | 33.74 ± 2.60 |
+
+The two metrics do not agree. BLEU is not reliable for the "seen" group:
+
+| Group | 1-gram | 2-gram | 3-gram | 4-gram | Translations with 4 words or more |
+| --- | --- | --- | --- | --- | --- |
+| unseen | 39.8% | 20.2% | 11.1% | 6.4% | 2,447 / 4,307 (57%) |
+| seen | 40.3% | 20.7% | 18.8% | 18.6% | 103 / 466 (22%) |
+
+- The 1-gram and 2-gram precisions are almost equal. The difference comes only from the 3-gram and 4-gram precisions.
+- In the "seen" group, only 103 translations contain 4-word sequences. A small number of sentences decide the 4-gram precision. This explains the large interval (± 4.60).
+- The "seen" sentences are shorter: 3.5 tokens per reference (1,637 / 466) against 4.7 (20,431 / 4,307).
+
+With chrF++, small_A translates the "seen" sentences less well. A probable cause: `make_splits.py` removes identical pairs. A "seen" sentence in Test A always has a Darija translation that is different from the one in Train A. The model learned the English sentence with another translation.
+
+### What this changes for Part 1
+
+- On its own test set, split A gives a higher score than split B: +0.98 BLEU, +1.39 chrF++.
+- On TerjamaBench, A and B have the same level (chrF++ 34.28 and 34.44).
+- The overlap of English sentences (9.2% of Test A) does not explain the gap: on the "unseen" sentences only, small_A still has chrF++ 37.23, against 35.60 for small_B on Test B.
+
+The gap comes from something else. Two hypotheses, not verified:
+
+1. The composition of the test sets. In split B, a sentence with many translations goes completely into one set. In split A, these sentences end up mostly in the "seen" group.
+2. The variation between two training runs. I have only one run per split.
+
+### Limits
+
+- One training run per split.
+- Test A and Test B do not contain the same sentences.
+- The confidence intervals are not a formal statistical test.
+
+### What I learned
+
+- Read the length ratio and the BP in the BLEU output, not only the score. The ratio showed the loops of the base model.
+- BLEU-4 is not stable on short sentences. The score can go to 0 or become too high.
+- Save the translations. Without them, I could not have done the seen/unseen analysis or explained the BLEU results.
+- A removed duplicate changes the meaning of "leakage". Here, a "seen" English sentence never comes with the same Darija translation.
+
+### Decisions
+
+- Metrics: chrF++ is the main metric for all datasets and categories. I always report BLEU too, with the number of 4-word sequences.
+- TerjamaBench: I report the global score on all 850 sentences and the score of each category. I do not remove or reweight any category.
+- `results/` stays in Google Drive, not in Git. The TerjamaBench files contain sentences of a gated dataset.
+
+### Next step
+
+- Test on the sentences that are in Test A and in Test B, and not in Train A or Train B. Both models never saw them. If the scores are close, hypothesis 1 is correct.
+- Look at the 2 translations of small_A with a ratio above 3.
