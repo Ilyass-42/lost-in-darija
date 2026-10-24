@@ -261,7 +261,7 @@ The ± value is the half-width of the 95% confidence interval.
 | small_B | Test B | 13.08 ± 0.90 | 35.60 ± 0.69 | 0.894 |
 | small_B | TerjamaBench | 5.39 ± 1.38 | 34.44 ± 1.28 | 1.074 |
 
-TerjamaBench by category (about 70 sentences per category, so the intervals are large):
+TerjamaBench by category (46 to 163 entries per category, so the intervals are large):
 
 | Category | BLEU A | BLEU B | chrF++ A | chrF++ B |
 | --- | --- | --- | --- | --- |
