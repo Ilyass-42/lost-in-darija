@@ -17,8 +17,12 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--split", type=str, required=True, choices=["A", "B"])
 parser.add_argument("--run_name", type=str, required=True)
+parser.add_argument("--synthetic", type=str, nargs="*", default=[],
+                    help="CSV synthetiques (eng, darija_ar) ajoutes a Train. Exemple : data/synthetic/doda_grounded.csv")
 
 args = parser.parse_args()
+if args.synthetic and args.split != "B":
+    parser.error("--synthetic s'utilise seulement avec --split B (les CSV sont decontamines contre Test B et Val B)")
 
 split = args.split
 run_name = args.run_name
@@ -32,8 +36,10 @@ model = model.to(device)
 
 
 class DarijaDataset(Dataset):
-    def __init__(self,csv_path,tokenizer):
-        df = pd.read_csv(csv_path)
+    def __init__(self,csv_paths,tokenizer):
+        df = pd.concat([pd.read_csv(p) for p in csv_paths], ignore_index=True)
+        missing = df[["eng","darija_ar"]].isna().sum().sum()
+        assert missing == 0, f"{missing} valeurs vides dans eng/darija_ar"
         self.sources = df["eng"].tolist()
         self.targets = df["darija_ar"].tolist()
         self.tokenizer = tokenizer
@@ -54,10 +60,12 @@ pin_memory = (device_type=="cuda")
 
 
 train_path = f"./data/splits/{split}/train.csv"
-Darija_Dataset = DarijaDataset(train_path,tokenizer) 
+Darija_Dataset = DarijaDataset([train_path] + args.synthetic,tokenizer)
+print(f"Train : {len(Darija_Dataset)} lignes ({train_path} + {len(args.synthetic)} fichier(s) synthetique(s))")
 
 val_path = f"./data/splits/{split}/val.csv"
-Darija_Dataset_Validation = DarijaDataset(val_path,tokenizer)
+Darija_Dataset_Validation = DarijaDataset([val_path],tokenizer)  # Validation : humain seul (Val B), pour toutes les conditions
+print(f"Validation : {len(Darija_Dataset_Validation)} lignes ({val_path})")
 
 collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 dataloader = DataLoader(Darija_Dataset, batch_size=16, shuffle=True, collate_fn=collator,num_workers=min(4,os.cpu_count()),pin_memory=pin_memory)
