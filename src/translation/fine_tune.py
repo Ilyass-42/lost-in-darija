@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from torch.amp import autocast, GradScaler
 import os
+import time
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -98,6 +99,7 @@ except TypeError:
     scaler = GradScaler()
 
 
+t_start = time.time()
 model.train()
 for epoch in range(num_epoch):
     sum_train_loss = 0
@@ -122,7 +124,7 @@ for epoch in range(num_epoch):
         writer.add_scalar("LR",scheduler.get_last_lr()[0],global_step)
     avg_train_loss = sum_train_loss / num_batch_train
     writer.add_scalar("Loss/train_epoch", avg_train_loss, epoch)
-    print(f"Epoch : {epoch} - Train Loss {avg_train_loss}")
+    print(f"Epoch : {epoch} - Train Loss {avg_train_loss} - Temps ecoule {round((time.time() - t_start) / 60, 1)} min")
     
     model.eval()
     
