@@ -374,3 +374,225 @@ The gap comes from something else. Two hypotheses, not verified:
 
 - Test on the sentences that are in Test A and in Test B, and not in Train A or Train B. Both models never saw them. If the scores are close, hypothesis 1 is correct.
 - Look at the 2 translations of small_A with a ratio above 3.
+
+---
+
+## Entry 5 (29 Oct 2026): Common-sentence test
+
+### Why
+
+In Entry 4, small_A scored higher than small_B on its own test set (chrF++ 36.99 against 35.60). The English overlap did not explain the gap. Test A and Test B contain different sentences, so their scores are not comparable. I need both models to translate the same sentences with the same references.
+
+### Method
+
+Script: `scripts/analyze_common.py` (commit `79c2715`). Input: the result CSV files of small_A on Test A and small_B on Test B (Entry 4, same decoding).
+
+1. Normalize the English sentences (same function as `make_splits.py`).
+2. Keep the sentences that are in Test A and in Test B, and in neither Train A nor Train B.
+3. Keep the rows that have the same Darija reference in both files.
+4. Compute chrF++ and BLEU-4 for both models on these rows.
+5. Compute the difference A − B (chrF++) with a paired bootstrap: 1,000 resamples, seed 12345.
+
+### Results
+
+| Check | Result |
+| --- | --- |
+| Common English sentences | 415 |
+| Rows in Test A / rows in Test B | 419 / 420 |
+| Rows with the same reference in A and B | 419 |
+
+One row of Test B has no matching reference in Test A. The script excludes it.
+
+| Model | chrF++ | BLEU | 4-grams in hypotheses |
+| --- | --- | --- | --- |
+| small_A | 35.56 | 12.54 | 635 |
+| small_B | 35.85 | 13.75 | 628 |
+
+- Difference chrF++ (A − B): −0.27. 95% confidence interval: [−1.13; 0.64]. The interval contains 0.
+- The two models have a similar number of 4-grams in their hypotheses (635 and 628).
+
+### What this shows
+
+- On the same sentences and the same references, I do not see a difference between the two models.
+- This agrees with TerjamaBench (chrF++ 34.28 and 34.44): the two models have the same level on shared data.
+- The gap of 1.39 chrF++ on the own test sets is therefore not a general quality gap. It is compatible with hypothesis 1 (different test composition).
+- This result makes hypothesis 2 (training variation) less likely for a general gap. It does not exclude it.
+
+### Limits
+
+- The common set is small: 419 rows, about 9% of each test set.
+- 415 sentences for 419 rows: almost all sentences have one translation. This test does not cover the sentences with many translations. Hypothesis 1 is not tested directly.
+- One training run per split.
+- I computed the confidence interval for the difference only for chrF++.
+
+### What I learned
+
+- Two scores on two different test sets are not a comparison. A comparison needs the same sentences and the same references.
+- A paired bootstrap gives one interval for the difference between two models. Two separate intervals do not.
+
+### Decisions
+
+- The result is written in `paper_draft.md` (Sections 4.3, 5.1, 5.2, 6.2 and Limitations).
+- Hypothesis 1 stays open. The test by number of translations (one or many translations per English sentence, in Test A and Test B) is optional.
+- Next: Part 2 (DODa-500K synthetic data). I did not find a dataset card for DODa-500K. The generation method of `doda_grounded` is unknown. I will ask Aissam and Hamza.
+- The repository license is CC BY-NC 4.0 (checked in the `LICENSE` file). It forbids commercial use of the data.
+
+
+---
+
+## Entry 6 (29 Oct 2026): Synthetic data of DODa-500K: overlap, cleaning and training setup
+
+### Overlap with the human data
+
+Notebook: `notebooks/explore_doda500k.ipynb` (one new cell). I normalized the English sentences (same function as before). I compared each synthetic type with the 44,652 unique English sentences of the human part. Data: the raw file, before cleaning.
+
+| Synthetic type | Rows | Rows identical to a human sentence | Unique sentences identical to a human sentence |
+| --- | --- | --- | --- |
+| `doda_grounded` | 226,000 | 57 | 43 |
+| `exploratory` | 226,000 | 482 | 296 |
+
+- The exact overlap is small for both types.
+- `doda_grounded` has less overlap than `exploratory`. I had thought that "grounded" could mean "based on human sentences". The numbers do not support this idea. I did not verify what "grounded" means. I found no dataset card, so the generation method is still unknown.
+- The identical sentences that I looked at are short and frequent ("You're welcome.", "It is hot."). I read this as natural coincidence. I did not verify it.
+- This test sees only identical sentences. It does not see paraphrases.
+
+### Cleaning
+
+Script: `scripts/decontaminate_synthetic.py` (commit `48e2d53`). I ran it in Colab on CPU. It loads TerjamaBench from Hugging Face (`atlasia/TerjamaBench`, split `test`, same code as `evaluate_mt.py`), because the CSV file is not in Git.
+
+For each synthetic type, in this order:
+
+1. Remove rows with an empty English or Darija side, and rows with less than 70% Arabic letters (letters only).
+2. Remove identical pairs inside the type (same normalized English, same Darija).
+3. Remove rows whose normalized English sentence is in Test B (4,459 unique sentences), Val B (4,458) or TerjamaBench (773).
+4. Check that no such sentence remains (`assert`), then write `data/synthetic/<type>.csv` (columns `eng`, `darija_ar`).
+
+| Step | `doda_grounded` | `exploratory` |
+| --- | --- | --- |
+| Rows at start | 226,000 | 226,000 |
+| Empty side, or less than 70% Arabic letters | 0 | 0 |
+| Identical pairs | 744 | 342 |
+| Rows in Test B | 9 | 40 |
+| Rows in Val B | 6 | 37 |
+| Rows in TerjamaBench | 2 | 40 |
+| Removed in step 3 (union of the three sets) | 17 | 117 |
+| Rows after cleaning | 225,239 | 225,541 |
+| Unique English sentences | 223,830 | 224,451 |
+
+The counts of step 3 are made after step 2. A row can be in more than one set. The cleaned files are in Google Drive (`MyDrive/synthetic/`), not in Git.
+
+### Changes in `fine_tune.py`
+
+Commit `c362880` (hash read in the output of `git pull` in Colab).
+
+- New argument `--synthetic`: one or more CSV files added to Train.
+- The script refuses `--synthetic` with `--split A`. The files are cleaned against Test B and Val B only.
+- `DarijaDataset` reads a list of CSV files, concatenates them, and stops if a value is empty.
+- The script prints the number of rows of Train and Validation.
+- Each epoch prints the elapsed time.
+- Validation: `val.csv` only (human, Val B).
+
+### Decisions
+
+- I keep both cleaned files in full. The two types differ by 302 rows (0.13%), so I do not subsample.
+- Training rows: C1 263,336; C2 263,638; C3 488,877. In C1 and C2, about 86% of the rows are synthetic.
+- Validation: Val B (human only, 4,821 rows) for all conditions. The rule is the same for C0 to C3. Val B has no sentence in common with the synthetic data (the script checks it). I chose this after a discussion. A source that I read only in excerpts (Sennrich et al., 2016, WMT 16) is an example of this practice. I must verify it in the full text before I cite it.
+- Settings for C1 to C3: the same as C0 (8 epochs, lr 2e-5, batch 16, seed 42).
+- I will measure the sentences that the two synthetic types share when I start C3. I did not measure them yet.
+
+### Limit
+
+The cleaning removes identical sentences only. A paraphrase of a Test B or TerjamaBench sentence can stay in the synthetic data.
+
+### What I learned
+
+- A count has a meaning next to a reference point. 57 and 482 mean something only next to each other, and next to the 226,000 rows.
+- A script that needs a protected file must load it from the same source as the other scripts. The TerjamaBench CSV is not in Git, so the first version of the script could not run in a clean clone.
+- Colab: copy every output to Drive before I close the session.
+
+---
+
+## Entry 7 (29–30 Oct 2026): Training and evaluation of C1 and C2
+
+### Training
+
+```
+python src/translation/fine_tune.py --split B --run_name small_C1 --synthetic data/synthetic/doda_grounded.csv
+python src/translation/fine_tune.py --split B --run_name small_C2 --synthetic data/synthetic/exploratory.csv
+```
+
+Same settings as C0. GPU: NVIDIA A100-SXM4-40GB (C0 used a T4). The Colab panel showed 19.3 GB of 40 GB of GPU memory in use during C1.
+
+| Run | Train rows | Epoch 0 time | Epochs completed | Best epoch (from 0) | Best validation loss | Training time |
+| --- | --- | --- | --- | --- | --- | --- |
+| C0 `small_B_20261023_224611` | 38,097 | not measured | 8 | 6 | 2.4892 | not measured |
+| C1 `small_C1_20261029_142927` | 263,336 | 15.9 min | 7 | 5 | 2.4449 | 112.0 min |
+| C2 `small_C2_20261030_124415` | 263,638 | 16.3 min | 8 | 6 | 2.4449 | 129.2 min |
+
+- Epochs are counted from 0, as the script prints them. I checked the Colab logs of small_A and small_B (Part 1). The best epochs are 5 (validation loss 2.5182) and 6 (2.4892). They use the same convention, and they agree with Entry 4. Both logs show eight complete epochs (0 to 7). These two runs did not print the elapsed time, so the training time of C0 is not measured.
+- C1: I stopped the run by hand during the eighth epoch. Seven epochs were complete. The best checkpoint (epoch 5, validation loss 2.4449) was already written. The validation loss of epoch 6 was 2.4533. The cell time was 123.5 min, which includes the loading and the part of the last epoch. I copied the model to Drive and checked `model.safetensors` (292 MB).
+- C2: eight complete epochs. Best validation loss 2.4449 at epoch 6. Epoch 7 gave 2.4465. The cell time was 130.6 min.
+- I estimated the duration of C2 from the time of epoch 0: 127 min. The measure was 129.2 min.
+- C1 and C2 have almost the same lowest validation loss. Both are lower than C0 (2.4892) on the same Val B. A loss does not tell the quality of the translation. The training loss is not comparable between conditions, because about 86% of the rows are synthetic.
+- Compute: about 11 Colab units for each run (estimate, from the rate of 5.3 units per hour shown by Colab).
+- Colab Pro does not keep a notebook running after I close the tab. According to the third-party sources that I read, this feature is for Pro+. I kept the tab open.
+
+### Evaluation
+
+Script: `evaluate_mt.py`, same decoding as before. C1 and C2 on an A100. The C0 results are from Entry 4 (T4). The ± value is the half-width of the 95% bootstrap interval (1,000 resamples).
+
+| Model | Test B BLEU | Test B chrF++ | TerjamaBench BLEU | TerjamaBench chrF++ |
+| --- | --- | --- | --- | --- |
+| C0 | 13.08 ± 0.90 | 35.60 ± 0.69 | 5.39 ± 1.38 | 34.44 ± 1.28 |
+| C1 | 11.90 ± 0.80 | 35.26 ± 0.65 | 10.70 ± 1.71 | 40.57 ± 1.57 |
+| C2 | 12.14 ± 0.81 | 35.47 ± 0.69 | 10.10 ± 1.78 | 41.13 ± 1.56 |
+
+Differences with C0: TerjamaBench chrF++ +6.13 (C1) and +6.69 (C2); TerjamaBench BLEU +5.31 and +4.71; Test B chrF++ −0.34 and −0.13; Test B BLEU −1.18 and −0.94.
+
+TerjamaBench by category (chrF++ and BLEU). C0 is the split B model of Entry 4.
+
+| Category | chrF++ C0 | chrF++ C1 | chrF++ C2 | BLEU C0 | BLEU C1 | BLEU C2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| common_phrases | 41.56 | 45.48 | 45.53 | 5.44 | 15.00 | 12.26 |
+| dialect_variation | 15.58 | 21.66 | 21.11 | 1.43 | 4.44 | 3.95 |
+| educational | 32.29 | 35.30 | 38.56 | 3.93 | 6.06 | 6.42 |
+| humor | 22.66 | 25.65 | 27.51 | 2.88 | 4.11 | 4.39 |
+| idioms | 21.21 | 24.74 | 24.95 | 0.84 | 1.31 | 0.93 |
+| incorrect_spellings | 34.50 | 37.94 | 34.71 | 5.95 | 7.46 | 4.21 |
+| long_sentences | 37.41 | 48.31 | 47.60 | 5.77 | 15.18 | 14.14 |
+| mixed_language | 29.09 | 35.80 | 37.25 | 4.59 | 7.32 | 5.77 |
+| named_entities | 42.71 | 45.08 | 45.89 | 10.00 | 11.87 | 13.20 |
+| numeric_and_date | 35.83 | 40.92 | 41.46 | 6.56 | 8.92 | 8.82 |
+| religion | 34.54 | 43.81 | 49.49 | 6.58 | 7.45 | 10.79 |
+| single_words | 52.45 | 52.31 | 54.48 | 0.00 | 5.57 | 8.30 |
+
+### What this shows
+
+- On TerjamaBench, C1 and C2 are higher than C0. In chrF++, the intervals of C0 (33.16 to 35.72) and of C1 (39.00 to 42.14) or C2 (39.57 to 42.69) do not overlap. I computed these ranges as score ± half-width.
+- On Test B, I do not see a difference in chrF++. BLEU is lower for C1 and C2. I did not analyze why.
+- C1 and C2 do not differ on TerjamaBench: the chrF++ difference is 0.56, much smaller than the intervals (about ±1.6).
+- By category, C1 is higher than C0 in chrF++ in 11 of 12 categories (`single_words`: −0.14). C2 is higher in 12 of 12. The largest gains are `long_sentences` and `religion`. Between C1 and C2, the two largest differences are `religion` (+5.68 for C2) and `incorrect_spellings` (−3.23 for C2). Each category has 46 to 163 entries, and I did not compute their intervals.
+- BLEU for `single_words` (0.00, 5.57, 8.30) shows again that BLEU-4 is unstable on short sentences (Entry 4). chrF++ stays the main metric.
+- The gain appears on TerjamaBench, which is a separate dataset. It does not appear on Test B, which comes from the same human source as the training data.
+
+### Limits
+
+- One run per condition.
+- C0 ran on a T4. C1 and C2 ran on an A100.
+- I stopped C1 after seven of eight epochs. I cannot know if the eighth epoch would have given a better checkpoint.
+- The intervals of two models are separate intervals. A paired bootstrap of the difference is not done.
+- The cleaning removes identical sentences only. I do not know how the synthetic rows were generated. A paraphrase of a TerjamaBench sentence can stay in the synthetic data, and it can explain a part of the gain. I cannot exclude it.
+- C3 is not done. It mixes the effect of the type and the effect of the quantity.
+
+### What I learned
+
+- A lower validation loss (C1 and C2 against C0) did not give a higher chrF++ on Test B. I use the loss to choose a checkpoint, not to compare models.
+- The time of epoch 0 gave a good estimate of the full run (127 min estimated, 129.2 min measured).
+- A checkpoint is written only when the validation loss improves. After a "Writing model shards" line, I can stop the run safely.
+
+### Decisions
+
+- The results go in `paper_draft.md` (Sections 4.1, 5.4, 5.5, 6.3 and Limitations).
+- Next: C3 on the A100 (estimate: about 4 hours and 21 Colab units; not run yet). When C3 starts, I measure the sentences that the two synthetic types share.
+- Later, without GPU: paired bootstrap C1 − C0 and C2 − C0; near-duplicate test between TerjamaBench and the synthetic data.
+- To do: ask Aissam and Hamza how `doda_grounded` was generated. Optional: evaluate C0 again on the A100.
