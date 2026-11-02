@@ -1,3 +1,5 @@
+> **Update (October 2026):** the test split used in this document shared English sentences with the training data, and the two BLEU scores (18.30 and 10.23) used different decoding settings, so the "44% drop" is not a valid comparison. See [`writeup2.md`](writeup2.md) for the rebuilt evaluation and the new results.
+
 # From 18 to 10: Diagnosing a Distribution Shift in a Low-Resource NLP Project
 
 ## The Project

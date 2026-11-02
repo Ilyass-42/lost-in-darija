@@ -14,21 +14,25 @@ This is the continuation of [`writeup.md`](./writeup.md). It is written step by 
 
 ### What the audit found
 
-I checked the English sentences of my splits. I lowercased them and removed extra spaces. Then I counted the sentences that appear in two sets. I ran the check on `Train.csv`, `Val.csv` and `Test.csv`.
+I checked the English sentences of my splits. I lowercased them and removed the spaces at the start and at the end. Then I counted the sentences that appear in two sets. I ran the check on `Train.csv`, `Val.csv` and `Test.csv`.
 
-| Check | Result |
-| --- | --- |
-| English sentences of Test also in Train | 459 sentences (9.5%) |
-| English sentences of Val also in Train | 381 sentences (8.3%) |
-| English sentences of Test also in Val | 81 sentences |
+| Check | April files (commit `cefe36d`) | May files (commit `f322f53`) |
+| --- | --- | --- |
+| Unique English sentences in Train / Val / Test | 36,978 / 4,336 / 4,830 | 39,588 / 4,611 / 4,830 |
+| English sentences of Test also in Train | 466 sentences (9.65%) | 459 sentences (9.50%) |
+| English sentences of Val also in Train | 451 sentences (10.40%) | 381 sentences (8.26%) |
+| English sentences of Test also in Val | 85 sentences | 81 sentences |
 
-Script: `scripts/check_overlap.py` (commit `cb7e306`). Data measured: the CSV files of commit `f322f53`.
+Script: `scripts/check_overlap.py` (commit `cb7e306`). I ran it on the CSV files of each version. The percentages are computed on unique English sentences. The April files are the files of commit `cefe36d` (2 Apr 2026). The May files are the files of commit `f322f53`. `Train.csv` and `Val.csv` have not changed since commit `093a0eb` (1 May 2026).
 
-The BLEU score of 18.30 comes from a split with this leakage. I no longer consider it reliable.
+The BLEU score of 18.30 comes from a model trained on the April `Train.csv` (commit `cefe36d`) and tested on `Test.csv`. The git history indicates this: the 18.30 evaluation and the switch of `translate.py` to this model are from 25 Apr 2026, and the May files are from 1 May 2026. The model files and the training logs are not in Git, so I cannot prove it. The April files have the leakage too: 466 English sentences of Test (9.65%) are also in Train. I no longer consider the score reliable.
 
 ### The cause
 
-The cause is in `data/prepare_data.py`:
+The cause is in two places.
+
+1. **`Test.csv` (April 2026).** The notebook `notebooks/notebook.ipynb` (cells 5 and 6) made `Train.csv`, `Val.csv` and `Test.csv` from `data/sentences.csv` (48,818 rows). It used `train_test_split` row by row, without a seed and without removing duplicates. The files have 39,542, 4,394 and 4,882 rows. `Test.csv` has not changed since. It already shared English sentences with the April `Train.csv`.
+2. **`Train.csv` and `Val.csv` (May 2026).** `data/prepare_data.py` (commit `093a0eb`) merged the April Train and Val with two subsets of `atlasia/darija_english`, then split the result again. It does not write `Test.csv`. It explains only the Train/Val re-split:
 
 ```python
 df_merged.drop_duplicates(subset=["eng", "darija_ar"], inplace=True)
@@ -37,7 +41,7 @@ df_new_train, df_new_val = train_test_split(
 )
 ```
 
-There are two weaknesses:
+There are two weaknesses. The first is only in `prepare_data.py`. The second is in both places:
 
 1. `drop_duplicates` removes only identical pairs. An English sentence with two different Darija translations keeps both rows.
 2. `train_test_split` works row by row. It does not know that two rows share the same English sentence. The two rows can go to different sets.
@@ -186,7 +190,7 @@ Split B uses proportions of groups, not rows. Its row proportions are 79.8 / 10.
 
 The script stops with an error if split B has a shared sentence (`assert`). I read the saved files again with `verify_splits.py`: same numbers.
 
-Split A reproduces the old situation: 9.2% here, 9.5% in my old files.
+Split A reproduces the old situation: 9.2% here, 9.5% in the May files (9.65% in the April files).
 
 ### Limit
 
